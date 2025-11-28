@@ -308,16 +308,21 @@ void ObsRadianceCRTM::fillReducedVarsByMaskedAveraging(GeoVaLs & geovals) const 
   size_t field_counter = 0;
 
   // Helper to compute area fractions (averaged per obs) and masks (per sample) associated with
-  // a particular surface type.
+  // a particular surface type.   
+  //geovals has model data sampled at obs location
+  //sample_range has many elements as many other points are considered in the FOV around the obs
+  //each element is an obs location
   const auto & maskHelper = [this, &nsamples, &nlocs, &sample_ranges,
                              &geovals, &field_counter](
-      const oops::Variable & var,
-      std::vector<double> & sample_values,
+      const oops::Variable & var,  //this is a variable that will be passed in the call of maskHelper
+      std::vector<double> & sample_values, //this is a concatenated list of all the values of a certain variable for all observations
+      // we have sample_ranges to retrieve the correct samples for every different FOV
       std::vector<double> & average) -> void {
     ASSERT(geovals.nprofiles(var, GeoVaLFormat::SAMPLED) == nsamples);
     ASSERT(sample_values.size() == nsamples);
-    ASSERT(average.size() == nlocs);
+    ASSERT(average.size() == nlocs); //nlocs is the number of observations
     geovals.getAtLevel(sample_values, var, 0, GeoVaLFormat::SAMPLED);
+    //here we need the sample ranges to put all the samples in one fov averaging them
     fov::average(average, sample_ranges, sample_values, sample_weights_);
     geovals.putAtLevel(average, var, 0, GeoVaLFormat::REDUCED);
     field_counter++;
@@ -347,15 +352,17 @@ void ObsRadianceCRTM::fillReducedVarsByMaskedAveraging(GeoVaLs & geovals) const 
     }
   }
 
-  // Helper to average over FOV using a mask
+  // Helper to average over FOV using a mask if the sample has no a value for the variable
   const auto & averageHelper = [this, &nsamples, &nlocs, &sample_ranges,
                                 &geovals, &field_counter](
-      const oops::Variable & var,
+      const oops::Variable & var,  //the geoval to be reduce
       const std::vector<double> mask,
       const std::vector<double> sample_mask) -> void {
     std::vector<double> sample_values(nsamples);
     std::vector<double> average(nlocs);
+    //extraction of the geoval filling sample_values
     geovals.getAtLevel(sample_values, var, 0, GeoVaLFormat::SAMPLED);
+    // calling of the function with default set values
     const double valueOutsideMask = detail::valueOutsideMask(var);
     fov::averageWithMask(average, sample_ranges, sample_values, sample_weights_,
                          mask, sample_mask, valueOutsideMask);
@@ -517,3 +524,4 @@ void ObsRadianceCRTM::print(std::ostream & os) const {
 // -----------------------------------------------------------------------------
 
 }  // namespace ufo
+
