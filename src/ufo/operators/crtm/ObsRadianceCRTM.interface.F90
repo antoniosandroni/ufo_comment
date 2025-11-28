@@ -8,6 +8,7 @@
 module ufo_radiancecrtm_mod_c
 
   use fckit_configuration_module, only: fckit_configuration
+  use fckit_mpi_module,   only: fckit_mpi_comm
   use iso_c_binding
   use ufo_radiancecrtm_mod
   use ufo_geovals_mod
@@ -35,7 +36,7 @@ contains
 
 ! ------------------------------------------------------------------------------
 
-subroutine ufo_radiancecrtm_setup_c(c_key_self, c_conf, c_nchan, c_channels, c_varlist) &
+subroutine ufo_radiancecrtm_setup_c(c_key_self, c_conf, c_nchan, c_channels, midPointJulday, c_varlist, c_comm) &
                                     bind(c,name='ufo_radiancecrtm_setup_f90')
 use oops_variables_mod
 implicit none
@@ -43,20 +44,29 @@ integer(c_int), intent(inout)  :: c_key_self
 type(c_ptr), value, intent(in) :: c_conf
 integer(c_int), intent(in) :: c_nchan
 integer(c_int), intent(in) :: c_channels(c_nchan)
-type(c_ptr), intent(in), value :: c_varlist
-
+integer(c_int64_t), intent(in) :: midPointJulday
+type(c_ptr), intent(in), value :: c_varlist !intent(in) the pointer is only for input
+type(c_ptr), value, intent(in) :: c_comm
 type(oops_variables) :: oops_vars
-type(ufo_radiancecrtm), pointer :: self
+type(ufo_radiancecrtm), pointer :: self  !this is the pointer to the Fortran object crtm
 type(fckit_configuration) :: f_conf
+type(fckit_mpi_comm) :: f_comm
 
-call ufo_radiancecrtm_registry%setup(c_key_self, self)
+call ufo_radiancecrtm_registry%setup(c_key_self, self)  !self is the pointer to Fortran object of type ufo_radiancecrtm
 f_conf = fckit_configuration(c_conf)
 
-call self%setup(f_conf, c_channels)
+f_comm = fckit_mpi_comm(c_comm)
+
+call self%setup(f_conf, c_channels, midPointJulday, f_comm)
 
 !> Update C++ ObsOperator with input variable list
-oops_vars = oops_variables(c_varlist)
-call oops_vars%push_back( self%varin )
+oops_vars = oops_variables(c_varlist) !conversion of the c pointer to a oops_vars type object
+!I am wrapping the c++ object to be able to use fortran routines
+call oops_vars%push_back( self%varin ) !self%varin is a ufo_radiancecrtm object configured with the variables crtm needs
+!remember that push_back is actually calling a c++ function, self%varin is configure inside CRTM with
+!the list of variables it needs
+call f_conf%final()
+call f_comm%final()
 
 end subroutine ufo_radiancecrtm_setup_c
 
@@ -78,7 +88,7 @@ end subroutine ufo_radiancecrtm_delete_c
 
 ! ------------------------------------------------------------------------------
 subroutine ufo_radiancecrtm_simobs_c(c_key_self, c_key_geovals, c_obsspace, c_nvars, c_nlocs, &
-           c_hofx, c_key_hofxdiags) bind(c,name='ufo_radiancecrtm_simobs_f90')
+           c_hofx, c_key_hofxdiags, c_qc_flags) bind(c,name='ufo_radiancecrtm_simobs_f90')
 implicit none
 integer(c_int), intent(in) :: c_key_self
 integer(c_int), intent(in) :: c_key_geovals
@@ -86,22 +96,22 @@ type(c_ptr), value, intent(in) :: c_obsspace
 integer(c_size_t), intent(inout) :: c_nvars, c_nlocs
 real(c_double), intent(inout) :: c_hofx(c_nvars, c_nlocs)
 integer(c_int), intent(in) :: c_key_hofxdiags
-
+type(c_ptr),value, intent(in) :: c_qc_flags
 type(ufo_radiancecrtm), pointer :: self
 type(ufo_geovals),  pointer :: geovals
 type(ufo_geovals),  pointer :: hofxdiags
-
-character(len=*), parameter :: myname_="ufo_radiancecrtm_simobs_c"
+character(len=*), parameter :: myname_='ufo_radiancecrtm_simobs_c'
 
 call ufo_radiancecrtm_registry%get(c_key_self, self)
 
 call ufo_geovals_registry%get(c_key_geovals,geovals)
 call ufo_geovals_registry%get(c_key_hofxdiags,hofxdiags)
 
-call self%simobs(geovals, c_obsspace, c_nvars, c_nlocs, c_hofx, hofxdiags)
+call self%simobs(geovals, c_obsspace, c_nvars, c_nlocs, c_hofx, hofxdiags, c_qc_flags)
 
 end subroutine ufo_radiancecrtm_simobs_c
 
 ! ------------------------------------------------------------------------------
 
 end module ufo_radiancecrtm_mod_c
+
