@@ -1,0 +1,313 @@
+subroutine broadcast_od(od, comm)
+
+use mpi
+use structures
+use parameters
+use iso_fortran_env
+implicit none
+
+type(od_dbase), intent(inout) :: od
+integer, intent(in)           :: comm
+
+integer :: ierr
+integer :: rank
+
+!========================================================
+! logical flags for allocatables
+!========================================================
+logical :: npn_alloc
+logical :: point_alloc
+logical :: squad_alloc
+logical :: equad_alloc
+logical :: quad_alloc
+
+logical :: cq0_alloc
+logical :: cq1_alloc
+logical :: cq2_alloc
+logical :: cq3_alloc
+
+logical :: npnR_alloc
+logical :: pointR_alloc
+logical :: squadR_alloc
+logical :: equadR_alloc
+logical :: quadR_alloc
+
+logical :: cq0R_alloc
+logical :: cq1R_alloc
+logical :: cq2R_alloc
+logical :: cq3R_alloc
+
+logical :: Pbetaw_alloc
+logical :: Pomegaw_alloc
+logical :: Pbw_alloc
+
+logical :: Pbetai_alloc
+logical :: Pomegai_alloc
+logical :: Pbi_alloc
+
+logical :: Isol_alloc
+!variabile temporanea per il membro od%double_precision
+logical :: tmp_double_precision
+real(kind=PREC) :: tmp_noi
+
+!========================================================
+! dimensions for 2D arrays
+!========================================================
+integer :: n1, n2
+
+call MPI_COMM_RANK(comm, rank, ierr)
+if (rank == 0) then
+   tmp_double_precision = od%double_precision
+   tmp_noi = od%noi
+end if
+
+!!call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL, 4, MPI_PREC, ierr)
+!!call MPI_TYPE_MATCH_SIZE(MPI_TYPECLASS_REAL, 8, MPI_R64, ierr)
+
+!========================================================
+! BROADCAST SCALARS
+!========================================================
+
+call MPI_BCAST(tmp_double_precision, 1, MPI_LOGICAL, 0, comm, ierr)
+od%double_precision = tmp_double_precision
+
+call MPI_BCAST(od%noi, 1, MPI_REAL4, 0, comm, ierr)
+call MPI_BCAST(od%nof, 1, MPI_REAL4, 0, comm, ierr)
+
+call MPI_BCAST(od%v1cur, 1, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+call MPI_BCAST(od%v2cur, 1, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+
+call MPI_BCAST(od%wn_thresh, 1, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+
+call MPI_BCAST(od%continuum_model, 1, MPI_INTEGER, 0, comm, ierr)
+
+call MPI_BCAST(od%nwhrbandmax, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nwhrbandmaxR, 1, MPI_INTEGER, 0, comm, ierr)
+
+call MPI_BCAST(od%nwvcur, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nqucur, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%szmax, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%szmax2, 1, MPI_INTEGER, 0, comm, ierr)
+
+call MPI_BCAST(od%nwref, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nwcur, 1, MPI_INTEGER, 0, comm, ierr)
+
+call MPI_BCAST(od%nwvcurR, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nqucurR, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%szmaxR, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%szmax2R, 1, MPI_INTEGER, 0, comm, ierr)
+
+call MPI_BCAST(od%nx1awp, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nx1aip, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nx2awp, 1, MPI_INTEGER, 0, comm, ierr)
+call MPI_BCAST(od%nx2aip, 1, MPI_INTEGER, 0, comm, ierr)
+
+!========================================================
+! allocation flags on root
+!========================================================
+
+if (rank == 0) then
+
+   npn_alloc    = allocated(od%npn)
+   point_alloc  = allocated(od%point)
+   squad_alloc  = allocated(od%squad)
+   equad_alloc  = allocated(od%equad)
+   quad_alloc   = allocated(od%quad)
+
+   cq0_alloc    = allocated(od%cq0)
+   cq1_alloc    = allocated(od%cq1)
+   cq2_alloc    = allocated(od%cq2)
+   cq3_alloc    = allocated(od%cq3)
+
+   npnR_alloc   = allocated(od%npnR)
+   pointR_alloc = allocated(od%pointR)
+   squadR_alloc = allocated(od%squadR)
+   equadR_alloc = allocated(od%equadR)
+   quadR_alloc  = allocated(od%quadR)
+
+   cq0R_alloc   = allocated(od%cq0R)
+   cq1R_alloc   = allocated(od%cq1R)
+   cq2R_alloc   = allocated(od%cq2R)
+   cq3R_alloc   = allocated(od%cq3R)
+
+   Pbetaw_alloc = allocated(od%Pbetaw)
+   Pomegaw_alloc = allocated(od%Pomegaw)
+   Pbw_alloc = allocated(od%Pbw)
+
+   Pbetai_alloc = allocated(od%Pbetai)
+   Pomegai_alloc = allocated(od%Pomegai)
+   Pbi_alloc = allocated(od%Pbi)
+
+   Isol_alloc = allocated(od%Isol)
+
+endif
+
+!========================================================
+! broadcast allocation flags
+!========================================================
+
+call MPI_BCAST(npn_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(point_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(squad_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(equad_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(quad_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+call MPI_BCAST(cq0_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(cq1_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(cq2_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(cq3_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+call MPI_BCAST(npnR_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(pointR_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(squadR_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(equadR_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(quadR_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+call MPI_BCAST(cq0R_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(cq1R_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(cq2R_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(cq3R_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+call MPI_BCAST(Pbetaw_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(Pomegaw_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(Pbw_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+call MPI_BCAST(Pbetai_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(Pomegai_alloc,1,MPI_LOGICAL,0,comm,ierr)
+call MPI_BCAST(Pbi_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+call MPI_BCAST(Isol_alloc,1,MPI_LOGICAL,0,comm,ierr)
+
+!========================================================
+! npn
+!========================================================
+
+if (npn_alloc) then
+
+   if (rank /= 0) then
+      allocate(od%npn(od%nwvcur))
+   endif
+
+   call MPI_BCAST(od%npn, od%nwvcur, MPI_INTEGER, 0, comm, ierr)
+
+endif
+
+!========================================================
+! point
+!========================================================
+
+if (point_alloc) then
+
+   if (rank /= 0) then
+      allocate(od%point(od%nwvcur))
+   endif
+
+   call MPI_BCAST(od%point, od%nwvcur, MPI_INTEGER, 0, comm, ierr)
+
+endif
+
+!========================================================
+! squad
+!========================================================
+
+if (squad_alloc) then
+
+   if (rank == 0) then
+      n1 = size(od%squad,1)
+      n2 = size(od%squad,2)
+   endif
+
+   call MPI_BCAST(n1,1,MPI_INTEGER,0,comm,ierr)
+   call MPI_BCAST(n2,1,MPI_INTEGER,0,comm,ierr)
+
+   if (rank /= 0) then
+      allocate(od%squad(n1,n2))
+   endif
+
+   call MPI_BCAST(od%squad, n1*n2, MPI_INTEGER, 0, comm, ierr)
+
+endif
+
+!========================================================
+! equad
+!========================================================
+
+if (equad_alloc) then
+
+   if (rank == 0) then
+      n1 = size(od%equad,1)
+      n2 = size(od%equad,2)
+   endif
+
+   call MPI_BCAST(n1,1,MPI_INTEGER,0,comm,ierr)
+   call MPI_BCAST(n2,1,MPI_INTEGER,0,comm,ierr)
+
+   if (rank /= 0) then
+      allocate(od%equad(n1,n2))
+   endif
+
+   call MPI_BCAST(od%equad, n1*n2, MPI_INTEGER, 0, comm, ierr)
+
+endif
+
+!========================================================
+! quad
+!========================================================
+
+if (quad_alloc) then
+
+   if (rank /= 0) then
+      allocate(od%quad(od%nqucur))
+   endif
+
+   call MPI_BCAST(od%quad, od%nqucur, MPI_INTEGER, 0, comm, ierr)
+
+endif
+
+!========================================================
+! cq arrays
+!========================================================
+
+if (cq0_alloc) then
+   if (rank /= 0) allocate(od%cq0(od%szmax))
+   call MPI_BCAST(od%cq0, od%szmax, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+endif
+
+if (cq1_alloc) then
+   if (rank /= 0) allocate(od%cq1(od%szmax))
+   call MPI_BCAST(od%cq1, od%szmax, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+endif
+
+if (cq2_alloc) then
+   if (rank /= 0) allocate(od%cq2(od%szmax))
+   call MPI_BCAST(od%cq2, od%szmax, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+endif
+
+if (cq3_alloc) then
+   if (rank /= 0) allocate(od%cq3(od%szmax))
+   call MPI_BCAST(od%cq3, od%szmax, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+endif
+
+!========================================================
+! Isol
+!========================================================
+
+if (Isol_alloc) then
+
+   if (rank == 0) then
+      n1 = size(od%Isol)
+   endif
+
+   call MPI_BCAST(n1,1,MPI_INTEGER,0,comm,ierr)
+
+   if (rank /= 0) then
+      allocate(od%Isol(n1))
+   endif
+
+   call MPI_BCAST(od%Isol, n1, MPI_DOUBLE_PRECISION, 0, comm, ierr)
+
+endif
+
+print *, "Rank ", rank, " completed broadcast_od"
+
+end subroutine broadcast_od

@@ -1,0 +1,81 @@
+
+self%conf%nconfig_file=1
+!self%conf%config_file(1)=("/glade/derecho/scratch/sandroni/newobsoperator_mpas_jedi/mpas_bundle_v3/code/sigma/conf/clear.conf")
+!self%conf%od_dbase=("lblrtm")
+!self%conf%od_dbase_dir=("/glade/derecho/scratch/sandroni/newobsoperator_mpas_jedi/mpas_bundle_v3/code/sigma/auxiliary/lblrtm/")
+
+!---- Scalar strings ----
+!self%conf%od_dbase          = 'lblrtm'
+!self%conf%atmosphere_file   = 'prof_20210720T120000_1'
+!self%conf%emissivity_file   = 'e_CLAIM7'
+self%conf%isrf_file         = 'iasi-ng-isrf.dat'
+
+!---- Scalar reals ----
+self%conf%sigma0            = 5.0_R64
+self%conf%sigma1            = 2760.0_R64
+self%conf%dsigma_low        = 0.360_PREC
+self%conf%obs_pres          = 0.507159E-01_PREC
+self%conf%bot_pres          = 0.101297E+04_PREC
+self%conf%wind_speed        = 0.0_PREC
+self%conf%cloud_fraction    = 0.0_PREC
+
+!---- Arrays ----
+self%conf%view_angles(1)    = 0.0_PREC
+self%conf%view_angles(2)    = 0.0_PREC
+self%conf%solar_angles(1)   = 180.0_PREC
+self%conf%solar_angles(2)   = 0.0_PREC
+
+!---- Integers ----
+self%conf%altitude_profile  = 6
+
+! Reflection type: 'S' → 0 (Specular)
+self%conf%reflection_type   = 0
+
+!---- Logical flags ----
+self%conf%wind_sunglint     = .true.
+self%conf%custom_emissivity = .true.
+self%conf%custom_isrf       = .false.
+self%conf%flag_ref          = .true.
+
+! Output radiance: "YY" → lr_rad = .true., hr_rad = .true.
+self%conf%lr_rad            = .true.
+self%conf%hr_rad            = .true.
+self%conf%lr_jacs           = .false.
+! Jacobians: comp_jacobians = "TTTTTTTTTTTNNNNN"
+self%conf%comp_jacs = (/ .true., .true., .true., .true., .true., .true., .true., .true., .true., .true., .true., &
+                   .false., .false., .false., .false., .false. /)
+
+! cntnm_jacobians = "TNN"
+self%conf%cntnm_jacs = (/ .true., .false., .false. /)
+
+! clouds_jacobians = "TT"
+self%conf%clouds_jacs = (/ .true., .true. /)
+
+! rte_output = "NNNNN" → all false
+self%conf%rte_output = .false.
+
+!---- Derived logicals (optional but recommended) ----
+self%conf%clear    = (self%conf%cloud_fraction == 0.0_PREC)
+self%conf%cloudy   = (self%conf%cloud_fraction > 0.0_PREC .and. self%conf%cloud_fraction < 1.0_PREC)
+self%conf%overcast = (self%conf%cloud_fraction == 1.0_PREC)
+self%conf%day      = (self%conf%solar_angles(1) < 90.0_PREC)
+self%conf%night    = .not. self%conf%day
+
+
+self%conf%isrf_file=("")
+self%conf%atmosphere_file=("/glade/derecho/scratch/sandroni/newobsoperator_mpas_jedi/mpas_bundle_v3/code/sigma/Input_files/prof_20210720T120000_1")
+self%conf%emissivity_file=("/glade/derecho/scratch/sandroni/newobsoperator_mpas_jedi/mpas_bundle_v3/code/sigma/Input_files/e_CLAIM7")
+
+do h=4,30
+   self%atm%wmol(:,h)=0.0_PREC
+end do
+!MODIFICA MANUALE DI ATM
+self%atm%cos_s = 0.0_PREC
+self%atm%cos_r = 0.0_PREC
+self%atm%cos_dazm = 0.0_PREC
+self%atm%sin_v = 0.0_PREC
+self%atm%sin_r = 0.0_PREC
+self%atm%rcos_vr = 0.0_PREC
+self%atm%WK = 0.0_PREC
+
+
